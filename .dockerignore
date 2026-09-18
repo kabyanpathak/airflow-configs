@@ -27,3 +27,6 @@ airflow.cfg
 .netrwhist
 .DS_Store
 .astro/
+
+# Personal roadmap
+/plan.md
