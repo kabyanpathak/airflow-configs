@@ -1,0 +1,7 @@
+# All relative paths are resolved from the root compose.yaml.
+services:
+  airflow:
+    env_file: !override
+      - .env.example
+    ports: !override
+      - "127.0.0.1::8080"

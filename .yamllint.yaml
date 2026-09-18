@@ -1,0 +1,13 @@
+rules:
+  key-duplicates: enable
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+  trailing-spaces: enable
+  new-line-at-end-of-file: enable
+ignore: |
+  tests/local/
+  .git/
+  .venv/
+  venv/
+  secrets/

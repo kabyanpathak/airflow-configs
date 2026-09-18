@@ -170,27 +170,39 @@ docker compose down --volumes
 
 ## GitHub Actions CI
 
-`.github/workflows/ci.yml` runs admin checks on every branch push: build the
-Airflow image, lint Python with Ruff, compile project Python files, and launch
-Airflow until its existing component healthcheck passes. Pull requests targeting
+`.github/workflows/ci.yml` runs admin checks on every branch push: lint Python
+with Ruff, compile Python files, lint YAML (including duplicate keys), validate
+GitHub Actions with actionlint, and validate Docker Compose configuration.
+Pull requests targeting
 `master`, pushes to `master` (including merges), and manual workflow runs
-additionally run all committed test suites. Other branch pushes run admin only.
+additionally build and launch Airflow through `tests/Integration/check.sh`, wait
+for its component healthcheck to pass, and run all committed test suites.
+Other branch pushes run admin only, without building or starting Docker.
 To block merges when validation fails, configure GitHub branch protection for
 `master` to require the `tests` status check. Deployment is not configured.
 
 ```text
 tests/
   local/         # Private experiments; only .gitkeep is committed
-  admin/         # Build, lint, compilation, and startup checks
+  admin/         # Python, YAML, workflow, and Compose checks
   Unit/          # Isolated function tests
-  Integration/   # Tests across components
-  E2E/           # End-to-end workflows
+  Integration/   # Build, startup, dependencies, providers, restart persistence
+  E2E/           # Browser UI rendering and navigation
 ```
 
-Unit, Integration, and E2E are initially empty placeholders. Add pytest tests
-named `test_*.py` as coverage grows. CI executes them in the Airflow image on the
-Compose network; integration/E2E tests can reach the running API at
-`http://airflow:8080`. External services and credentials must be supplied explicitly.
+Unit remains a placeholder until shared helper logic exists. Tests do not execute
+individual DAGs or check their business behavior; keep those experiments in local.
+The integration suite builds and starts Airflow, checks dependency compatibility
+and package/provider imports, restarts the service, waits for healthy components,
+and verifies a temporary SQLite marker survives. The marker is removed afterward.
+The browser test opens the DAG list (including an empty list), navigates Home,
+and checks for JavaScript exceptions and failing same-origin HTTP responses.
+
+Full runs use an isolated `airflow-ci` Compose project and the test override in
+`tests/Integration/compose.yaml`: example environment settings and a random
+localhost port, without reading local `.env` credentials. Runtime Python tests
+run inside the image; restart and Chromium tests run on the host. No login is
+required under the current example configuration; update E2E when auth changes.
 
 Git tracks files, not empty directories. `tests/local/.gitkeep` preserves the
 directory in fresh clones while its other contents, including subdirectories,
@@ -213,6 +225,33 @@ mv tests/local/test_example.py tests/Unit/test_example.py
 git add tests/Unit/test_example.py
 ```
 
-To reproduce admin checks locally, start Docker and prepare `.env`, then run
-`bash tests/admin/check.sh`. This builds and starts your Compose environment;
-GitHub CI cleans up its isolated containers and data after each run.
+To reproduce admin checks locally, install `tests/requirements.txt` in your
+Python environment, install actionlint (`go install
+github.com/rhysd/actionlint/cmd/actionlint@v1.7.12`), and make sure it is on PATH.
+Run `bash tests/admin/check.sh`. Docker Compose is required for configuration
+validation, but the Docker engine does not need to be running.
+
+For integration/E2E, start Docker and use a disposable project:
+
+```sh
+export COMPOSE_PROJECT_NAME=airflow-ci-local
+export COMPOSE_FILE=compose.yaml:tests/Integration/compose.yaml
+bash tests/Integration/check.sh
+docker compose exec -T airflow python -m pip check
+docker compose run --rm --no-deps \
+  --volume "$PWD:/workspace:ro" --workdir /workspace \
+  --entrypoint bash airflow -euc '
+    pip install -r tests/requirements.txt
+    python -m pytest -p no:cacheprovider tests/admin tests/Unit tests/Integration --ignore=tests/Integration/test_restart.py
+  '
+python -m pytest tests/Integration/test_restart.py
+python -m pip install -r tests/E2E/requirements.txt
+python -m playwright install chromium
+export AIRFLOW_TEST_URL="http://$(docker compose port airflow 8080)"
+python -m pytest tests/E2E
+# Remove only this disposable project's containers and data afterward.
+docker compose down --volumes --remove-orphans
+unset COMPOSE_PROJECT_NAME COMPOSE_FILE AIRFLOW_TEST_URL
+```
+
+GitHub CI performs cleanup automatically after each full run.
