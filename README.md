@@ -167,3 +167,52 @@ For an intentional reset only, the following deletes that stored data:
 ```sh
 docker compose down --volumes
 ```
+
+## GitHub Actions CI
+
+`.github/workflows/ci.yml` runs admin checks on every branch push: build the
+Airflow image, lint Python with Ruff, compile project Python files, and launch
+Airflow until its existing component healthcheck passes. Pull requests targeting
+`master`, pushes to `master` (including merges), and manual workflow runs
+additionally run all committed test suites. Other branch pushes run admin only.
+To block merges when validation fails, configure GitHub branch protection for
+`master` to require the `tests` status check. Deployment is not configured.
+
+```text
+tests/
+  local/         # Private experiments; only .gitkeep is committed
+  admin/         # Build, lint, compilation, and startup checks
+  Unit/          # Isolated function tests
+  Integration/   # Tests across components
+  E2E/           # End-to-end workflows
+```
+
+Unit, Integration, and E2E are initially empty placeholders. Add pytest tests
+named `test_*.py` as coverage grows. CI executes them in the Airflow image on the
+Compose network; integration/E2E tests can reach the running API at
+`http://airflow:8080`. External services and credentials must be supplied explicitly.
+
+Git tracks files, not empty directories. `tests/local/.gitkeep` preserves the
+directory in fresh clones while its other contents, including subdirectories,
+are ignored. Ignored files stay on your machine during normal branch switches,
+but destructive cleanup such as `git clean -fdx` can remove them. GitHub runners
+cannot run tests that were never committed. Gitignore also does not untrack files
+that were already committed.
+
+Run local experiments yourself in a Python environment with the project and test
+dependencies installed:
+
+```sh
+python -m pytest tests/local
+```
+
+Promote a local test by moving it to Unit, Integration, or E2E and committing it:
+
+```sh
+mv tests/local/test_example.py tests/Unit/test_example.py
+git add tests/Unit/test_example.py
+```
+
+To reproduce admin checks locally, start Docker and prepare `.env`, then run
+`bash tests/admin/check.sh`. This builds and starts your Compose environment;
+GitHub CI cleans up its isolated containers and data after each run.

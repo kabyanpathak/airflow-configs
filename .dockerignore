@@ -30,3 +30,6 @@ airflow.cfg
 
 # Personal roadmap
 /plan.md
+
+# Local experiments should not enter the build context.
+tests/local/

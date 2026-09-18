@@ -33,3 +33,7 @@ airflow.cfg
 
 # Personal roadmap
 /plan.md
+
+# Keep the local test directory, but never commit its experiments.
+/tests/local/*
+!/tests/local/.gitkeep
