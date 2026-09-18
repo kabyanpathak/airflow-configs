@@ -1,0 +1,1 @@
+Independently audit recorded activity, actual worktree changes, file permissions, evidence, and Bob approvals. Reject unsupported findings, production edits, permission violations, or claimed checks without recorded results. Audit all proposed replacement contents. Approve only individually safe Bob-approved proposals. Do not treat another model approval as proof.

@@ -1,0 +1,1 @@
+Propose factual updates to affected documentation, README status, existing task checkboxes, and verified project records. Every completion claim needs evidence. Never expand acceptance criteria or invent roadmap items.

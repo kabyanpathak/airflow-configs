@@ -1,0 +1,1 @@
+Investigate CPU, memory, performance, timers, concurrency, and background/idle behavior. Distinguish measurements from source-based hypotheses. Propose bounded follow-up investigations; never invent benchmark data or production patches.

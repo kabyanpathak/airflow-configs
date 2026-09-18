@@ -37,3 +37,6 @@ airflow.cfg
 # Keep the local test directory, but never commit its experiments.
 /tests/local/*
 !/tests/local/.gitkeep
+
+# Machine-specific AI maintenance paths (credentials belong in .env).
+/compose.maintenance.yaml

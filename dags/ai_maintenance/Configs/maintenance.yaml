@@ -1,0 +1,122 @@
+ai_maintenance:
+  description: Bounded weekly AI review in a disposable local worktree
+  schedule: "0 12 * * 0"
+  start_date: "2026-09-20 12:00:00"
+  timezone: America/Los_Angeles
+  catchup: false
+  is_paused_upon_creation: true
+  max_active_runs: 1
+  max_active_tasks: 1
+  render_template_as_native_obj: true
+  default_args:
+    owner: maintenance
+    retries: 0
+  tags: [ai, maintenance, local]
+  tasks:
+    start:
+      operator: airflow.providers.standard.operators.empty.EmptyOperator
+    vault:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.vault.get_vault
+      show_return_value_in_logs: false
+      dependencies: [start]
+    eligibility:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.eligibility.eligibility
+      show_return_value_in_logs: false
+      op_kwargs:
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run_id: "{{ run_id }}"
+        controlled_review: "{{ dag_run.conf.get('controlled_review', false) if dag_run.run_type == 'manual' else false }}"
+        scheduled_at: "{{ data_interval_end.isoformat() if dag_run.run_type == \"scheduled\" else none }}"
+      dependencies: [vault]
+    prepare_branch:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.prepare_branch.prepare_branch
+      show_return_value_in_logs: false
+      op_kwargs:
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [eligibility]
+    dispatch:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.dispatch.dispatch
+      show_return_value_in_logs: false
+      op_kwargs:
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='prepare_branch') or ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [prepare_branch]
+    quinn:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.run_agent.run_agent
+      show_return_value_in_logs: false
+      op_kwargs:
+        role: "quinn"
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='prepare_branch') or ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [dispatch]
+    aria:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.run_agent.run_agent
+      show_return_value_in_logs: false
+      op_kwargs:
+        role: "aria"
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='prepare_branch') or ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [quinn]
+    mira:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.run_agent.run_agent
+      show_return_value_in_logs: false
+      op_kwargs:
+        role: "mira"
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='prepare_branch') or ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [aria]
+    rowan:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.run_agent.run_agent
+      show_return_value_in_logs: false
+      op_kwargs:
+        role: "rowan"
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='prepare_branch') or ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [mira]
+    bob_review:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.review.review
+      show_return_value_in_logs: false
+      op_kwargs:
+        role: "bob"
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='prepare_branch') or ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [rowan]
+    alice_audit:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.review.review
+      show_return_value_in_logs: false
+      op_kwargs:
+        role: "alice"
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='prepare_branch') or ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [bob_review]
+    publish:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.publish.publish
+      show_return_value_in_logs: false
+      op_kwargs:
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='prepare_branch') or ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [alice_audit]
+    finalize:
+      operator: airflow.providers.standard.operators.python.PythonOperator
+      python_callable: ai_maintenance.include.task.finalize.finalize
+      show_return_value_in_logs: false
+      trigger_rule: all_done
+      op_kwargs:
+        config: "{{ ti.xcom_pull(task_ids='vault') }}"
+        run: "{{ ti.xcom_pull(task_ids='prepare_branch') or ti.xcom_pull(task_ids='eligibility') }}"
+      dependencies: [vault, eligibility, prepare_branch, dispatch, quinn, aria, mira, rowan, bob_review, alice_audit, publish]
+    end:
+      operator: airflow.providers.standard.operators.empty.EmptyOperator
+      dependencies: [publish, finalize]

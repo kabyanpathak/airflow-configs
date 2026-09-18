@@ -1,0 +1,10 @@
+# Copy to compose.maintenance.yaml and replace these host paths.
+# Run: docker compose -f compose.yaml -f compose.maintenance.yaml up -d
+services:
+  airflow:
+    volumes:
+      # Git worktrees record absolute paths. Mount the repository AND its
+      # worktree parent at identical absolute host/container paths if you
+      # want to inspect with host-side git. Match vault.py accordingly.
+      - /absolute/host/repository:/absolute/host/repository
+      - /absolute/host/review-worktrees:/absolute/host/review-worktrees
