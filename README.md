@@ -2,11 +2,19 @@
 
 This is my personal Airflow configuration and will be actively maintained.
 
+
 **Airflow version:** 3.3.2
 
 Runs locally with Docker Compose, SQLite, and LocalExecutor. User login is disabled;
 the UI is available only on this machine at http://localhost:8080.
 Run the commands below from this project directory.
+
+## Key
+- U : update (continual work on something)
+- Up : upgrade 
+- A : add (adding something new)
+- R : refactor
+
 
 ## Initial setup
 
