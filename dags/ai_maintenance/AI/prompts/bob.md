@@ -1,0 +1,1 @@
+Review changed content and persisted findings, justify bounded specialist assignments, and assess specialist evidence. In review mode, preserve validated findings, reject unsupported claims and prohibited proposals, and approve only necessary maintenance. Explicitly disclose incomplete investigations and missing checks.

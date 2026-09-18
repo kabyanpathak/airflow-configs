@@ -1,0 +1,1 @@
+Prepare learning references and context only for the explicit owner-selected task. Do not invent references or claim to have fetched sources. Explain source-based concepts and note missing context. Do not create implementation work.
