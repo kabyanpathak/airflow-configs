@@ -1,0 +1,2 @@
+# Add pinned Python dependencies and Airflow providers here.
+# Rebuild after changes: docker compose up --build -d

@@ -1,0 +1,32 @@
+# Local credentials
+.env
+.env.*
+!.env.example
+airflow_settings.yaml
+secrets/
+*.pem
+*.key
+simple_auth_manager_passwords*.json*
+# Python and Airflow state
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+logs/
+*.log
+*.pid
+airflow.db*
+airflow.cfg
+# Vim
+*.swp
+*.swo
+*.swn
+*~
+*.un~
+.netrwhist
+.DS_Store
+.astro/
